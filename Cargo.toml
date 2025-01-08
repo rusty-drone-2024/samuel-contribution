@@ -4,9 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["serialize"]}
-common_structs = { git = "https://github.com/rusty-drone-2024/common-structs.git"}
+wg_2024 = { git = "https://github.com/WGL-2024/WGL_repo_2024.git", features = ["serialize"] }
+common_structs = { git = "https://github.com/rusty-drone-2024/common-structs.git", branch = "matteo-fix-and-test" }
 crossbeam-channel = ">=0.5.13"
+either = "1.13.0"
 
 [dev-dependencies]
 # rusty_tester = { git = "https://github.com/rusty-drone-2024/rusty-tester.git", branch = "main" }
