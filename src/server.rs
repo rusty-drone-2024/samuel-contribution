@@ -200,13 +200,15 @@ impl<T: ServerLogic> Server<T> {
     fn prepare_node_send(
         senders: &mut ServerSenders,
         to: NodeId,
-    ) -> Result<(&NodeInfo, &Sender<Packet>), Either<UnknownNodeIdError, UnknownNodeInfoError>>
-    {
+    ) -> Result<
+        (&NodeInfo, &Sender<Packet>, &Sender<LeafEvent>),
+        Either<UnknownNodeIdError, UnknownNodeInfoError>,
+    > {
         match senders.packet_send.get(&to) {
             Some(channel) => match senders.node_info.get_mut(&to) {
                 Some(node_info) => {
                     node_info.session_id += 1; // First sessions has id 1
-                    Ok((node_info, channel))
+                    Ok((node_info, channel, &senders.controller_send))
                 }
                 None => Err(Right(UnknownNodeInfoError { node_id: to })),
             },
@@ -219,14 +221,37 @@ impl<T: ServerLogic> Server<T> {
         to: NodeId,
         packet: PacketType,
     ) -> Result<Option<SendError<Packet>>, Either<UnknownNodeIdError, UnknownNodeInfoError>> {
-        let (node_info, channel) = Self::prepare_node_send(senders, to)?;
-        Ok(channel
+        let (node_info, channel, controller) = Self::prepare_node_send(senders, to)?;
+        let send_error = channel
             .send(Packet {
                 routing_header: node_info.route.clone(),
                 session_id: node_info.session_id,
-                pack_type: packet,
+                pack_type: packet.clone(),
             })
-            .err())
+            .err();
+        let use_shortcut = match packet {
+            PacketType::Ack(_) | PacketType::Nack(_) | PacketType::FloodResponse(_) => true,
+            _ => false,
+        };
+        if use_shortcut && send_error.is_some() {
+            let shortcut_error = controller
+                .send(LeafEvent::ControllerShortcut(Packet {
+                    routing_header: node_info.route.clone(),
+                    session_id: node_info.session_id,
+                    pack_type: packet,
+                }))
+                .err();
+
+            return match shortcut_error {
+                Some(e) => {
+                    println!("WARNING: Send error to shortcut: {}", e);
+                    Ok(send_error) // Return original send error
+                }
+                None => Ok(None), // Hide original error
+            };
+        }
+
+        Ok(send_error)
     }
 
     pub fn send_message(senders: &mut ServerSenders, to: NodeId, message: Message) {
@@ -250,7 +275,7 @@ impl<T: ServerLogic> Server<T> {
         message: Message,
     ) -> Result<Vec<Option<SendError<Packet>>>, Either<UnknownNodeIdError, UnknownNodeInfoError>>
     {
-        let (node_info, channel) = Self::prepare_node_send(senders, to)?;
+        let (node_info, channel, _) = Self::prepare_node_send(senders, to)?;
         Ok(message
             .into_fragments()
             .into_iter()
