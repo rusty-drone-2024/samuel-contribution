@@ -1,16 +1,14 @@
-use common_structs::message::ServerType;
-use wg_2024::network::NodeId;
+// use common_structs::message::ServerType;
+// use wg_2024::network::NodeId;
 
-// TODO
+// pub fn server_type() -> ServerType {
+//     ServerType::Chat
+// }
 
-pub fn server_type() -> ServerType {
-    ServerType::Chat
-}
+// pub fn chat_registration() {}
 
-pub fn chat_registration() {}
+// pub fn client_list() -> Vec<NodeId> {
+//     vec![]
+// }
 
-pub fn client_list() -> Vec<NodeId> {
-    vec![]
-}
-
-pub fn chat_send(to: NodeId, chat_msg: Vec<u8>) {}
+// pub fn chat_send(to: NodeId, chat_msg: Vec<u8>) {}

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},
-    message::{Media, Message, ServerType},
+    message::{Link, Media, Message, ServerType},
 };
 use crossbeam_channel::{Receiver, Sender};
 use wg_2024::{network::NodeId, packet::Packet};
@@ -10,11 +10,11 @@ use wg_2024::{network::NodeId, packet::Packet};
 use crate::server::{Server, ServerLogic, ServerSenders};
 
 pub struct MediaServer {
-    media_map: HashMap<u64, Media>,
+    media_map: HashMap<Link, Media>,
 }
 
 impl MediaServer {
-    pub fn new(media_map: HashMap<u64, Media>) -> Self {
+    pub fn new(media_map: HashMap<Link, Media>) -> Self {
         MediaServer {
             media_map: media_map,
         }
@@ -22,7 +22,7 @@ impl MediaServer {
 }
 
 impl ServerLogic for MediaServer {
-    fn on_message(&mut self, senders: &ServerSenders, from: &NodeId, message: Message) -> () {
+    fn on_message(&mut self, senders: &mut ServerSenders, from: NodeId, message: Message) -> () {
         match message {
             Message::ReqServerType => {
                 Server::<MediaServer>::send_message(

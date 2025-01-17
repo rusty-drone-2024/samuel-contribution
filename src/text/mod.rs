@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},
-    message::{FileWithData, Message, ServerType},
+    message::{FileWithData, Link, Message, ServerType},
 };
 use crossbeam_channel::{Receiver, Sender};
 use wg_2024::{network::NodeId, packet::Packet};
@@ -10,17 +10,17 @@ use wg_2024::{network::NodeId, packet::Packet};
 use crate::server::{Server, ServerLogic, ServerSenders};
 
 pub struct TextServer {
-    file_map: HashMap<u64, FileWithData>,
+    file_map: HashMap<Link, FileWithData>,
 }
 
 impl TextServer {
-    pub fn new(file_map: HashMap<u64, FileWithData>) -> Self {
+    pub fn new(file_map: HashMap<Link, FileWithData>) -> Self {
         TextServer { file_map: file_map }
     }
 }
 
 impl ServerLogic for TextServer {
-    fn on_message(&mut self, senders: &ServerSenders, from: &NodeId, message: Message) -> () {
+    fn on_message(&mut self, senders: &mut ServerSenders, from: NodeId, message: Message) -> () {
         match message {
             Message::ReqServerType => {
                 Server::<TextServer>::send_message(
@@ -33,7 +33,7 @@ impl ServerLogic for TextServer {
                 Server::<TextServer>::send_message(
                     senders,
                     from,
-                    Message::RespFilesList(self.file_map.keys().copied().collect()),
+                    Message::RespFilesList(self.file_map.keys().cloned().collect()),
                 );
             }
             Message::ReqFile(id) => {

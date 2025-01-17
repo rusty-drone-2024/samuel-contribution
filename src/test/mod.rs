@@ -1,15 +1,15 @@
 #![cfg(test)]
 
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use common_structs::{leaf::LeafEvent, message::Message};
-use crossbeam_channel::{unbounded, Receiver, RecvError, Sender};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use wg_2024::{
-    network::NodeId,
+    network::{NodeId, SourceRoutingHeader},
     packet::{Packet, PacketType},
 };
 
-use crate::server::{ServerLogic, ServerSenders};
+use crate::server::{NodeInfo, ServerLogic, ServerSenders};
 
 mod media;
 mod server;
@@ -22,10 +22,16 @@ pub fn setup_node0() -> (ServerSenders, Receiver<Packet>) {
     let (node0_send, node0_recv) = unbounded::<Packet>();
     packet_send.insert(0, node0_send);
 
-    (ServerSenders::new(controller_send, packet_send), node0_recv)
+    let mut node_info = HashMap::new();
+    node_info.insert(0, NodeInfo::new(SourceRoutingHeader::empty_route(), 0));
+
+    (
+        ServerSenders::with_node_info(controller_send, packet_send, node_info),
+        node0_recv,
+    )
 }
 
-pub fn panic_to_message(packet: Result<Packet, RecvError>) -> Message {
+pub fn panic_to_message<T: Display>(packet: Result<Packet, T>) -> Message {
     match packet {
         Ok(packet) => match packet.pack_type {
             PacketType::MsgFragment(fragment) => match Message::from_fragments(vec![fragment]) {
@@ -38,14 +44,34 @@ pub fn panic_to_message(packet: Result<Packet, RecvError>) -> Message {
     }
 }
 
-pub fn assert_eq_message(packet: Result<Packet, RecvError>, expected_message: Message) {
+pub fn panic_to_message_multi<T: Display>(packets: Vec<Result<Packet, T>>) -> Message {
+    let mut fragments = Vec::with_capacity(packets.len());
+    for packet in packets {
+        match packet {
+            Ok(packet) => match packet.pack_type {
+                PacketType::MsgFragment(fragment) => {
+                    fragments.push(fragment);
+                }
+                _ => panic!("Packet is not a fragment."),
+            },
+            Err(e) => panic!("No packet could be received: {}", e),
+        }
+    }
+
+    match Message::from_fragments(fragments) {
+        Ok(message) => message,
+        Err(e) => panic!("Fragments are not a message: {}", e),
+    }
+}
+
+pub fn assert_eq_message<T: Display>(packet: Result<Packet, T>, expected_message: Message) {
     assert_eq!(panic_to_message(packet), expected_message)
 }
 
 pub fn test_on_message<T: ServerLogic>(server: &mut T, message: Message, response: Message) {
-    let (senders, node0_recv) = setup_node0();
+    let (mut senders, node0_recv) = setup_node0();
 
-    server.on_message(&senders, &0, message);
+    server.on_message(&mut senders, 0, message);
 
     assert_eq_message(node0_recv.recv(), response);
 }
@@ -55,9 +81,9 @@ pub fn test_on_message_fn<T: ServerLogic>(
     message: Message,
     check: Box<dyn FnOnce(Message) -> ()>,
 ) {
-    let (senders, node0_recv) = setup_node0();
+    let (mut senders, node0_recv) = setup_node0();
 
-    server.on_message(&senders, &0, message);
+    server.on_message(&mut senders, 0, message);
 
     check(panic_to_message(node0_recv.recv()));
 }

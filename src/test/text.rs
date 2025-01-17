@@ -21,9 +21,14 @@ fn server_type() {
 #[test]
 fn file_list() {
     let mut file_map = HashMap::new();
-    let ids = vec![1, 42, 777, 9001];
+    // NOTE: Should be sorted in order!
+    let ids = vec![
+        String::from("demo"),
+        String::from("test"),
+        String::from("🍌"),
+    ];
     let file = FileWithData {
-        file: String::from("Hello World!"),
+        file: String::from("Hello, World!"),
         related_data: HashMap::new(),
     };
     ids.iter().for_each(|id| {
@@ -46,19 +51,19 @@ fn file_list() {
 #[test]
 fn file() {
     let mut file_map = HashMap::new();
-    let id = 0;
+    let id = String::from("test");
     let file = FileWithData {
         file: String::from("Hello World!"),
         related_data: HashMap::new(),
     };
-    file_map.insert(id, file.clone());
+    file_map.insert(id.clone(), file.clone());
     let mut server = TextServer::new(file_map);
     test_on_message(&mut server, Message::ReqFile(id), Message::RespFile(file));
 }
 
 #[test]
 fn media_not_found() {
-    let id = 0;
+    let id = String::from("test");
     let mut server = TextServer::new(HashMap::new());
     test_on_message(&mut server, Message::ReqFile(id), Message::ErrNotFound);
 }

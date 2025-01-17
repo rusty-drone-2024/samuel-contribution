@@ -21,9 +21,9 @@ fn server_type() {
 #[test]
 fn media() {
     let mut media_map = HashMap::new();
-    let id = 0;
+    let id = String::from("test");
     let media = vec![1, 2, 3, 4, 5];
-    media_map.insert(id, media.clone());
+    media_map.insert(id.clone(), media.clone());
     let mut server = MediaServer::new(media_map);
     test_on_message(
         &mut server,
@@ -34,7 +34,7 @@ fn media() {
 
 #[test]
 fn media_not_found() {
-    let id = 0;
+    let id = String::from("test");
     let mut server = MediaServer::new(HashMap::new());
     test_on_message(&mut server, Message::ReqMedia(id), Message::ErrNotFound);
 }
