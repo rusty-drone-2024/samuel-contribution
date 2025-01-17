@@ -70,6 +70,7 @@ impl ServerSenders {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_node_info(
         controller_send: Sender<LeafEvent>,
         packet_send: HashMap<NodeId, Sender<Packet>>,

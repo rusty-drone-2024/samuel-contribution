@@ -15,7 +15,7 @@ pub struct TextServer {
 
 impl TextServer {
     pub fn new(file_map: HashMap<Link, FileWithData>) -> Self {
-        TextServer { file_map: file_map }
+        Self { file_map }
     }
 }
 

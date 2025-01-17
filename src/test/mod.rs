@@ -11,6 +11,7 @@ use wg_2024::{
 
 use crate::server::{NodeInfo, ServerLogic, ServerSenders};
 
+mod chat;
 mod media;
 mod server;
 mod text;

@@ -15,9 +15,7 @@ pub struct MediaServer {
 
 impl MediaServer {
     pub fn new(media_map: HashMap<Link, Media>) -> Self {
-        MediaServer {
-            media_map: media_map,
-        }
+        Self { media_map }
     }
 }
 
