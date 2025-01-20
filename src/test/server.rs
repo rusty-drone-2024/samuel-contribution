@@ -65,7 +65,7 @@ Etiam varius tortor vitae tincidunt rutrum. In tortor mauris, imperdiet malesuad
     let fragment_count = fragments.len();
     for fragment in fragments {
         let res = test_packet_send.send(Packet::new_fragment(
-            SourceRoutingHeader::new(vec![0], 0),
+            SourceRoutingHeader::with_first_hop(vec![0, 0]),
             0,
             fragment,
         ));
@@ -77,12 +77,15 @@ Etiam varius tortor vitae tincidunt rutrum. In tortor mauris, imperdiet malesuad
         server.update();
         let packet = node0_recv.recv();
         match packet {
-            Ok(p) => assert_eq!(
-                p.pack_type,
-                PacketType::Ack(Ack {
-                    fragment_index: i as u64
-                })
-            ),
+            Ok(p) => {
+                assert_eq!(p.session_id, 0);
+                assert_eq!(
+                    p.pack_type,
+                    PacketType::Ack(Ack {
+                        fragment_index: i as u64
+                    })
+                );
+            }
             Err(e) => panic!("Did not receive packet (expected ACK): {}", e),
         }
     }

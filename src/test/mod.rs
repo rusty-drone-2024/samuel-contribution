@@ -9,7 +9,7 @@ use wg_2024::{
     packet::{Packet, PacketType},
 };
 
-use crate::server::{NodeInfo, ServerLogic, ServerSenders};
+use crate::server::{ServerLogic, ServerSenders};
 
 mod chat;
 mod media;
@@ -23,11 +23,11 @@ pub fn setup_node0() -> (ServerSenders, Receiver<Packet>) {
     let (node0_send, node0_recv) = unbounded::<Packet>();
     packet_send.insert(0, node0_send);
 
-    let mut node_info = HashMap::new();
-    node_info.insert(0, NodeInfo::new(SourceRoutingHeader::empty_route(), 0));
+    let mut node_path = HashMap::new();
+    node_path.insert(0, SourceRoutingHeader::with_first_hop(vec![0, 0]));
 
     (
-        ServerSenders::with_node_info(controller_send, packet_send, node_info),
+        ServerSenders::with_node_path(controller_send, packet_send, node_path),
         node0_recv,
     )
 }
