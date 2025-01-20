@@ -4,10 +4,7 @@ use std::{
 };
 
 use common_structs::{
-    leaf::{
-        LeafCommand::{self, AddSender, Crash, RemoveSender},
-        LeafEvent,
-    },
+    leaf::{LeafCommand, LeafEvent},
     message::Message,
 };
 use crossbeam_channel::{select_biased, Receiver, SendError, Sender};
@@ -105,7 +102,7 @@ pub trait ServerLogic {
 pub type PendingFragmentsLookup = HashMap<(u64, NodeId), Vec<Fragment>>;
 pub type SeenFloodRequests = HashSet<(u64, NodeId)>;
 pub struct Server<T: ServerLogic> {
-    crashed: bool,
+    running: bool,
     id: NodeId,
     senders: ServerSenders,
     receivers: ServerReceivers,
@@ -124,7 +121,7 @@ impl<T: ServerLogic> Server<T> {
         implementation: T,
     ) -> Self {
         Server {
-            crashed: false,
+            running: true,
             id,
             senders: ServerSenders::new(controller_send, packet_send),
             receivers: ServerReceivers::new(controller_recv, packet_recv),
@@ -139,17 +136,17 @@ impl<T: ServerLogic> Server<T> {
             recv(self.receivers.controller_recv) -> res => {
                 if let Ok(packet) = res {
                     match packet {
-                        RemoveSender(node_id) => {
+                        LeafCommand::RemoveSender(node_id) => {
                             if self.senders.packet_send.remove(&node_id).is_some() {
                                 self.senders.node_path.remove(&node_id);
                             }
                         },
-                        AddSender(node_id, sender) => {
+                        LeafCommand::AddSender(node_id, sender) => {
                             self.senders.packet_send.insert(node_id, sender);
                             let route = SourceRoutingHeader::with_first_hop(vec![node_id]);
                             self.senders.node_path.insert(node_id, route);
-                    },
-                        Crash => self.crashed = true,
+                        },
+                        LeafCommand::Kill => self.running = false,
                     };
                 }
             },
@@ -272,7 +269,7 @@ impl<T: ServerLogic> Server<T> {
     }
 
     pub fn run(&mut self) {
-        while !self.crashed {
+        while self.running {
             self.update();
         }
     }
