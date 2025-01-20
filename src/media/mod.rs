@@ -20,13 +20,20 @@ impl MediaServer {
 }
 
 impl ServerLogic for MediaServer {
-    fn on_message(&mut self, senders: &mut ServerSenders, from: NodeId, message: Message) -> () {
+    fn on_message(
+        &mut self,
+        senders: &mut ServerSenders,
+        from: NodeId,
+        message: Message,
+        session_id: u64,
+    ) -> () {
         match message {
             Message::ReqServerType => {
                 Server::<MediaServer>::send_message(
                     senders,
                     from,
                     Message::RespServerType(ServerType::Media),
+                    Some(session_id),
                 );
             }
             Message::ReqMedia(id) => {
@@ -35,10 +42,14 @@ impl ServerLogic for MediaServer {
                         senders,
                         from,
                         Message::RespMedia(media.clone()),
+                        Some(session_id),
                     ),
-                    None => {
-                        Server::<MediaServer>::send_message(senders, from, Message::ErrNotFound)
-                    }
+                    None => Server::<MediaServer>::send_message(
+                        senders,
+                        from,
+                        Message::ErrNotFound,
+                        Some(session_id),
+                    ),
                 };
             }
             _ => {
@@ -46,6 +57,7 @@ impl ServerLogic for MediaServer {
                     senders,
                     from,
                     Message::ErrUnsupportedRequestType,
+                    Some(session_id),
                 );
             }
         }

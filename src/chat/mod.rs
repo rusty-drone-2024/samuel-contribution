@@ -20,13 +20,20 @@ impl ChatServer {
 }
 
 impl ServerLogic for ChatServer {
-    fn on_message(&mut self, senders: &mut ServerSenders, from: NodeId, message: Message) -> () {
+    fn on_message(
+        &mut self,
+        senders: &mut ServerSenders,
+        from: NodeId,
+        message: Message,
+        session_id: u64,
+    ) -> () {
         match message {
             Message::ReqServerType => {
                 Server::<ChatServer>::send_message(
                     senders,
                     from,
                     Message::RespServerType(ServerType::Chat),
+                    Some(session_id),
                 );
             }
             Message::ReqChatRegistration => {
@@ -37,6 +44,7 @@ impl ServerLogic for ChatServer {
                     senders,
                     from,
                     Message::RespClientList(self.connected_clients.clone().into_iter().collect()),
+                    Some(session_id),
                 );
             }
             Message::ReqChatSend { to, chat_msg } => {
@@ -45,6 +53,7 @@ impl ServerLogic for ChatServer {
                         senders,
                         from,
                         Message::ErrNotExistentClient,
+                        Some(session_id),
                     );
                     return;
                 }
@@ -53,6 +62,7 @@ impl ServerLogic for ChatServer {
                     senders,
                     to,
                     Message::RespChatFrom { from, chat_msg },
+                    None,
                 );
             }
             _ => {
@@ -60,6 +70,7 @@ impl ServerLogic for ChatServer {
                     senders,
                     from,
                     Message::ErrUnsupportedRequestType,
+                    Some(session_id),
                 );
             }
         }

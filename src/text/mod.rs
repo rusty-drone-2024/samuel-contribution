@@ -20,13 +20,20 @@ impl TextServer {
 }
 
 impl ServerLogic for TextServer {
-    fn on_message(&mut self, senders: &mut ServerSenders, from: NodeId, message: Message) -> () {
+    fn on_message(
+        &mut self,
+        senders: &mut ServerSenders,
+        from: NodeId,
+        message: Message,
+        session_id: u64,
+    ) -> () {
         match message {
             Message::ReqServerType => {
                 Server::<TextServer>::send_message(
                     senders,
                     from,
                     Message::RespServerType(ServerType::Text),
+                    Some(session_id),
                 );
             }
             Message::ReqFilesList => {
@@ -34,6 +41,7 @@ impl ServerLogic for TextServer {
                     senders,
                     from,
                     Message::RespFilesList(self.file_map.keys().cloned().collect()),
+                    Some(session_id),
                 );
             }
             Message::ReqFile(id) => {
@@ -42,8 +50,14 @@ impl ServerLogic for TextServer {
                         senders,
                         from,
                         Message::RespFile(file.clone()),
+                        Some(session_id),
                     ),
-                    None => Server::<TextServer>::send_message(senders, from, Message::ErrNotFound),
+                    None => Server::<TextServer>::send_message(
+                        senders,
+                        from,
+                        Message::ErrNotFound,
+                        Some(session_id),
+                    ),
                 };
             }
             _ => {
@@ -51,6 +65,7 @@ impl ServerLogic for TextServer {
                     senders,
                     from,
                     Message::ErrUnsupportedRequestType,
+                    Some(session_id),
                 );
             }
         }

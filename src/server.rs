@@ -93,7 +93,13 @@ impl ServerReceivers {
 }
 
 pub trait ServerLogic {
-    fn on_message(&mut self, senders: &mut ServerSenders, from: NodeId, message: Message) -> ();
+    fn on_message(
+        &mut self,
+        senders: &mut ServerSenders,
+        from: NodeId,
+        message: Message,
+        session_id: u64,
+    ) -> ();
 }
 
 pub type PendingFragmentsLookup = HashMap<(u64, NodeId), Vec<Fragment>>;
@@ -183,7 +189,7 @@ impl<T: ServerLogic> Server<T> {
                                                 match Message::from_fragments(fragments) {
                                                     Ok(message) => {
                                                         println!("Fragments parsed to message: {:?}", message);
-                                                        self.implementation.on_message(&mut self.senders, node_id, message);
+                                                        self.implementation.on_message(&mut self.senders, node_id, message, packet.session_id);
 
                                                     },
                                                     Err(e) => println!("WARNING: Fragments could not be parsed to message. {}", e),
@@ -371,8 +377,13 @@ impl<T: ServerLogic> Server<T> {
         send_error
     }
 
-    pub fn send_message(senders: &mut ServerSenders, to: NodeId, message: Message) {
-        let res = Self::send_message_raw(senders, to, message);
+    pub fn send_message(
+        senders: &mut ServerSenders,
+        to: NodeId,
+        message: Message,
+        fixed_session: Option<u64>,
+    ) {
+        let res = Self::send_message_raw(senders, to, message, fixed_session);
 
         match res {
             Ok(send_errors) => {
@@ -390,10 +401,11 @@ impl<T: ServerLogic> Server<T> {
         senders: &mut ServerSenders,
         to: NodeId,
         message: Message,
+        fixed_session: Option<u64>,
     ) -> Result<Vec<Option<SendError<Packet>>>, Either<UnknownNodeIdError, UnknownNodeInfoError>>
     {
         let (node_path, session_id, channel, controller, history) =
-            Self::prepare_node_send(senders, to, true)?;
+            Self::prepare_node_send(senders, to, fixed_session.is_none())?;
         Ok(message
             .into_fragments()
             .into_iter()
@@ -402,7 +414,11 @@ impl<T: ServerLogic> Server<T> {
                     channel,
                     controller,
                     history,
-                    Packet::new_fragment(node_path.clone(), session_id, fragment),
+                    Packet::new_fragment(
+                        node_path.clone(),
+                        fixed_session.unwrap_or(session_id),
+                        fragment,
+                    ),
                 )
             })
             .collect())

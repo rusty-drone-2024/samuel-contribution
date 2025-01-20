@@ -23,8 +23,9 @@ impl ServerLogic for EchoServer {
         senders: &mut crate::server::ServerSenders,
         from: NodeId,
         message: Message,
+        session_id: u64,
     ) -> () {
-        Server::<EchoServer>::send_message(senders, from, message);
+        Server::<EchoServer>::send_message(senders, from, message, Some(session_id));
     }
 }
 
