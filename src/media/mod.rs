@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::Read,
+};
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},
@@ -75,17 +79,31 @@ impl Leaf for Server<MediaServer> {
     where
         Self: Sized,
     {
+        let mut media_map = HashMap::new();
+        media_map.insert(
+            String::from("chicken.jpeg"),
+            get_file_as_byte_vec(&String::from("chicken.jpeg")),
+        );
         Server::new(
             id,
             controller_send,
             controller_recv,
             packet_recv,
             packet_send,
-            MediaServer::new(HashMap::new()),
+            MediaServer::new(media_map),
         )
     }
 
     fn run(&mut self) {
         self.run();
     }
+}
+
+fn get_file_as_byte_vec(filename: &String) -> Vec<u8> {
+    let mut f = File::open(&filename).expect("no file found");
+    let mut buffer = Vec::new();
+    f.read_to_end(&mut buffer)
+        .expect("file does not fit in buffer");
+
+    buffer
 }

@@ -83,13 +83,21 @@ impl Leaf for Server<TextServer> {
     where
         Self: Sized,
     {
+        let mut file_map = HashMap::new();
+        file_map.insert(
+            String::from("helloworld"),
+            FileWithData {
+                file: String::from("Hello, World!"),
+                related_data: HashMap::new(),
+            },
+        );
         Server::new(
             id,
             controller_send,
             controller_recv,
             packet_recv,
             packet_send,
-            TextServer::new(HashMap::new()),
+            TextServer::new(file_map),
         )
     }
 
