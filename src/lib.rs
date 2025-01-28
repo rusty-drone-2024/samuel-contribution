@@ -4,7 +4,6 @@ mod server;
 mod test;
 mod text;
 
-pub use chat::ChatServer;
-pub use media::MediaServer;
-pub use server::Server;
-pub use text::TextServer;
+pub type ChatServer = server::Server<chat::ChatServer>;
+pub type MediaServer = server::Server<media::MediaServer>;
+pub type TextServer = server::Server<text::TextServer>;

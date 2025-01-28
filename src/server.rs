@@ -9,6 +9,7 @@ use common_structs::{
 };
 use crossbeam_channel::{select_biased, Receiver, SendError, Sender};
 use either::Either::{self, Left, Right};
+use log::{info, warn};
 use wg_2024::{
     network::{NodeId, SourceRoutingHeader},
     packet::{Ack, FloodResponse, Fragment, Nack, NackType, NodeType, Packet, PacketType},
@@ -152,20 +153,21 @@ impl<T: ServerLogic> Server<T> {
             },
             recv(self.receivers.packet_recv) -> res => {
                 if let Ok(packet) = res {
-                    let src_id = packet.routing_header.source();
-                    match src_id {
-                        Some(node_id) => {
-                            let des_id = packet.routing_header.destination();
-                            if des_id.is_none() || des_id.is_some_and(|id| id != self.id) {
-                                if let Err(e) = Self::send_packet(&mut self.senders, node_id, PacketType::Nack(Nack{ fragment_index: packet.get_fragment_index(), nack_type: NackType::UnexpectedRecipient(self.id)}), Some(packet.session_id)) {
-                                    println!("WARNING: Could not send nack. {}", e);
-                                }
-                                return;
-                            }
+                    match packet.pack_type {
+                        PacketType::MsgFragment(fragment) => {
+                            info!("Received fragment: {:?}", fragment);
 
-                            match packet.pack_type {
-                                PacketType::MsgFragment(fragment) => {
-                                    println!("Received fragment: {:?}", fragment);
+                            let src_id = packet.routing_header.source();
+                            match src_id {
+                                Some(node_id) => {
+                                    let des_id = packet.routing_header.destination();
+                                    if des_id.is_none() || des_id.is_some_and(|id| id != self.id) {
+                                        // Packet is not meant for us
+                                        if let Err(e) = Self::send_packet(&mut self.senders, node_id, PacketType::Nack(Nack{ fragment_index: fragment.fragment_index, nack_type: NackType::UnexpectedRecipient(self.id)}), Some(packet.session_id)) {
+                                            warn!("WARNING: Could not send nack. {}", e);
+                                        }
+                                        return;
+                                    }
 
                                     // Update route to latest
                                     let mut node_path = packet.routing_header.get_reversed();
@@ -173,9 +175,10 @@ impl<T: ServerLogic> Server<T> {
                                     self.senders.node_path.insert(node_id, node_path);
 
                                     if let Err(e) = Self::send_packet(&mut self.senders, node_id, PacketType::Ack(Ack{fragment_index: fragment.fragment_index}), Some(packet.session_id)) {
-                                        println!("WARNING: Could not send ack. {}", e);
+                                        warn!("WARNING: Could not send ack. {}", e);
                                     }
 
+                                    // Collect fragment parts until the full message is received
                                     let expected_fragment_count = fragment.total_n_fragments.try_into().unwrap();
                                     let key = (packet.session_id, node_id);
                                     let fragments = self.pending_fragments.entry(key).or_insert(Vec::with_capacity(expected_fragment_count));
@@ -185,83 +188,82 @@ impl<T: ServerLogic> Server<T> {
                                             Some(fragments) => {
                                                 match Message::from_fragments(fragments) {
                                                     Ok(message) => {
-                                                        println!("Fragments parsed to message: {:?}", message);
+                                                        info!("Fragments parsed to message: {:?}", message);
                                                         self.implementation.on_message(&mut self.senders, node_id, message, packet.session_id);
-
                                                     },
-                                                    Err(e) => println!("WARNING: Fragments could not be parsed to message. {}", e),
+                                                    Err(e) => {warn!("WARNING: Fragments could not be parsed to message. {}", e);},
                                                 };
                                             }
-                                            None => {println!("WARNING: Fragments are ready to be processed but could not be removed from HashMap.")}
+                                            None => {warn!("WARNING: Fragments are ready to be processed but could not be removed from HashMap.");}
                                         }
-                                    }
-                                },
-                                PacketType::FloodRequest(mut req) => {
-                                    println!("Received flood request: {:?}", req);
-                                    let key = (req.flood_id, req.initiator_id);
-                                    let from = req.path_trace.last().cloned();
-
-                                    req.increment(self.id, NodeType::Server);
-                                    match from {
-                                        Some((from_id, _)) => {
-                                            if !self.seen_flood_requests.contains(&key) && self.senders.packet_send.len() > 1 {
-                                                for (node_id, _) in self.senders.packet_send.clone().into_iter() {
-                                                    if node_id == from_id {
-                                                        continue;
-                                                    }
-
-                                                    if let Err(e) = Self::send_packet(&mut self.senders, node_id, PacketType::FloodRequest(req.clone()), None) {
-                                                        println!("WARNING: Could not send flood request. {}", e);
-                                                    }
-                                                }
-                                            } else {
-                                                let mut path = SourceRoutingHeader::with_first_hop(
-                                                    req.path_trace
-                                                        .iter()
-                                                        .cloned()
-                                                        .map(|(id, _)| id)
-                                                        .rev()
-                                                        .collect(),
-                                                );
-                                                if let Some(destination) = path.destination() {
-                                                    if destination != req.initiator_id {
-                                                        path.append_hop(req.initiator_id);
-                                                    }
-                                                }
-
-                                                self.senders.node_path.insert(from_id, path);
-                                                if let Err(e) = Self::send_packet(&mut self.senders, req.initiator_id, PacketType::FloodResponse(FloodResponse { flood_id: req.flood_id, path_trace: req.path_trace }), None) {
-                                                    println!("WARNING: Could not send flood response. {}", e);
-                                                }
-                                            }
-                                        }
-                                        None => {println!("WARNING: Received flood request with empty path trace.")}
                                     }
                                 }
-                                PacketType::Nack(nack) => {
-                                    let resend_packet = self.senders.history.get(&(packet.session_id, nack.fragment_index));
-                                    if let Some(resend_packet) = resend_packet {
-                                        if let Some(neighbor_id) = resend_packet.routing_header.current_hop() {
-                                            match self.senders.packet_send.get(&neighbor_id) {
-                                                Some(channel) => {
-                                                    let resend_packet = resend_packet.clone();
-                                                    Self::send_packet_raw(channel, &self.senders.controller_send, &mut self.senders.history, resend_packet);
-                                                }
-                                                None => {
-                                                    println!("WARNING: Invalid routing neighbor in resend. {}", neighbor_id);
-                                                },
+                                None => {warn!("WARNING: Received packet with invalid routing_header. {}", packet.routing_header);}
+                            }
+                        },
+                        PacketType::FloodRequest(mut req) => {
+                            info!("Received flood request: {:?}", req);
+                            let key = (req.flood_id, req.initiator_id);
+                            let from = req.path_trace.last().cloned();
+
+                            req.increment(self.id, NodeType::Server);
+                            match from {
+                                Some((from_id, _)) => {
+                                    if !self.seen_flood_requests.contains(&key) && self.senders.packet_send.len() > 1 {
+                                        for (node_id, _) in self.senders.packet_send.clone().into_iter() {
+                                            if node_id == from_id {
+                                                continue;
                                             }
-                                        } else {
-                                            println!("WARNING: Invalid node_path route for node_id in resend. Current hop is None.");
+
+                                            if let Err(e) = Self::send_packet(&mut self.senders, node_id, PacketType::FloodRequest(req.clone()), None) {
+                                                warn!("WARNING: Could not send flood request. {}", e);
+                                            }
                                         }
                                     } else {
-                                        println!("WARNING: Nack received for packet {}:{}, but no such packet is recorded in our send history.", packet.session_id, nack.fragment_index);
+                                        let mut path = SourceRoutingHeader::with_first_hop(
+                                            req.path_trace
+                                                .iter()
+                                                .cloned()
+                                                .map(|(id, _)| id)
+                                                .rev()
+                                                .collect(),
+                                        );
+                                        if let Some(destination) = path.destination() {
+                                            if destination != req.initiator_id {
+                                                path.append_hop(req.initiator_id);
+                                            }
+                                        }
+
+                                        self.senders.node_path.insert(req.initiator_id, path);
+                                        if let Err(e) = Self::send_packet(&mut self.senders, req.initiator_id, PacketType::FloodResponse(FloodResponse { flood_id: req.flood_id, path_trace: req.path_trace }), None) {
+                                            warn!("WARNING: Could not send flood response. {}", e);
+                                        }
                                     }
                                 }
-                                _ => {}
+                                None => {warn!("WARNING: Received flood request with empty path trace.");}
                             }
                         }
-                        None => {println!("WARNING: Received packet with invalid routing_header. {}", packet.routing_header);}
+                        PacketType::Nack(nack) => {
+                            let resend_packet = self.senders.history.get(&(packet.session_id, nack.fragment_index));
+                            if let Some(resend_packet) = resend_packet {
+                                if let Some(neighbor_id) = resend_packet.routing_header.current_hop() {
+                                    match self.senders.packet_send.get(&neighbor_id) {
+                                        Some(channel) => {
+                                            let resend_packet = resend_packet.clone();
+                                            Self::send_packet_raw(channel, &self.senders.controller_send, &mut self.senders.history, resend_packet);
+                                        }
+                                        None => {
+                                            warn!("WARNING: Invalid routing neighbor in resend. {}", neighbor_id);
+                                        },
+                                    }
+                                } else {
+                                    warn!("WARNING: Invalid node_path route for node_id in resend. Current hop is None.");
+                                }
+                            } else {
+                                warn!("WARNING: Nack received for packet {}:{}, but no such packet is recorded in our send history.", packet.session_id, nack.fragment_index);
+                            }
+                        }
+                        _ => {}
                     }
                 }
             },
@@ -308,7 +310,7 @@ impl<T: ServerLogic> Server<T> {
                         None => Err(Left(UnknownNodeIdError { node_id: to })),
                     }
                 } else {
-                    println!("WARNING: Invalid node_path route for node_id. Current hop is None.");
+                    warn!("WARNING: Invalid node_path route for node_id. Current hop is None.");
                     Err(Right(UnknownNodeInfoError { node_id: to }))
                 }
             }
@@ -364,7 +366,7 @@ impl<T: ServerLogic> Server<T> {
 
             return match shortcut_error {
                 Some(e) => {
-                    println!("WARNING: Send error using shortcut: {}", e);
+                    warn!("WARNING: Send error using shortcut: {}", e);
                     send_error // Return original send error
                 }
                 None => None, // Hide original error
@@ -386,11 +388,11 @@ impl<T: ServerLogic> Server<T> {
             Ok(send_errors) => {
                 for error in send_errors {
                     if let Some(e) = error {
-                        println!("WARNING: Send message error: {}", e)
+                        warn!("WARNING: Send message error: {}", e)
                     }
                 }
             }
-            Err(e) => println!("WARNING: Send message error: {}", e),
+            Err(e) => warn!("WARNING: Send message error: {}", e),
         };
     }
 

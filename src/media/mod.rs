@@ -1,8 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs::{self, File},
-    io::Read,
-};
+use std::{collections::HashMap, fs::File, io::Read};
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},

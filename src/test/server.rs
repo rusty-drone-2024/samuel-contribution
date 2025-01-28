@@ -94,7 +94,6 @@ Etiam varius tortor vitae tincidunt rutrum. In tortor mauris, imperdiet malesuad
     let mut received_packets = Vec::with_capacity(fragment_count);
     for _ in 0..fragment_count {
         let packet = node0_recv.recv_timeout(Duration::from_millis(10));
-        println!("Packet {:?}", &packet);
         received_packets.push(packet);
     }
     assert_eq!(panic_to_message_multi(received_packets), message);
