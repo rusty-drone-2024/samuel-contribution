@@ -113,7 +113,7 @@ pub struct Server<T: ServerLogic> {
 }
 
 impl<T: ServerLogic> Server<T> {
-    pub fn new(
+    pub fn create(
         id: NodeId,
         controller_send: Sender<LeafEvent>,
         controller_recv: Receiver<LeafCommand>,

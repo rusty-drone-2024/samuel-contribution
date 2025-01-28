@@ -88,7 +88,7 @@ impl Leaf for Server<ChatServer> {
     where
         Self: Sized,
     {
-        Server::new(
+        Server::create(
             id,
             controller_send,
             controller_recv,

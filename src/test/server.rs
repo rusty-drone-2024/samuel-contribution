@@ -39,7 +39,7 @@ fn fragments() {
     let (node0_send, node0_recv) = unbounded::<Packet>();
     packet_send.insert(0, node0_send);
 
-    let mut server = Server::new(
+    let mut server = Server::create(
         0,
         controller_send,
         controller_recv,

@@ -91,7 +91,7 @@ impl Leaf for Server<TextServer> {
                 related_data: HashMap::new(),
             },
         );
-        Server::new(
+        Server::create(
             id,
             controller_send,
             controller_recv,

@@ -80,7 +80,7 @@ impl Leaf for Server<MediaServer> {
             String::from("chicken.jpeg"),
             get_file_as_byte_vec(&String::from("chicken.jpeg")),
         );
-        Server::new(
+        Server::create(
             id,
             controller_send,
             controller_recv,
