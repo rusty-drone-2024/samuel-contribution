@@ -1,10 +1,11 @@
 #![cfg(test)]
+// Testing of the chat protocol implementation
 
 use std::collections::HashSet;
 
 use common_structs::message::{Message, ServerType};
 
-use crate::{chat::ChatServer, server::ServerLogic};
+use crate::{chat::ChatServer, server::ServerProtocol};
 
 use super::{assert_eq_message, setup_node0, test_on_message, test_on_message_fn};
 

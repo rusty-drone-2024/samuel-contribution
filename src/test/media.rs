@@ -1,4 +1,5 @@
 #![cfg(test)]
+// Testing of the media protocol implementation
 
 use std::collections::HashMap;
 

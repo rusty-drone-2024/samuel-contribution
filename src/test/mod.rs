@@ -1,4 +1,5 @@
 #![cfg(test)]
+// Testing helper functions
 
 use std::{collections::HashMap, fmt::Display};
 
@@ -9,7 +10,7 @@ use wg_2024::{
     packet::{Packet, PacketType},
 };
 
-use crate::server::{ServerLogic, ServerSenders};
+use crate::server::{ServerProtocol, ServerSenders};
 
 mod chat;
 mod media;
@@ -69,7 +70,7 @@ pub fn assert_eq_message<T: Display>(packet: Result<Packet, T>, expected_message
     assert_eq!(panic_to_message(packet), expected_message)
 }
 
-pub fn test_on_message<T: ServerLogic>(server: &mut T, message: Message, response: Message) {
+pub fn test_on_message<T: ServerProtocol>(server: &mut T, message: Message, response: Message) {
     let (mut senders, node0_recv) = setup_node0();
 
     server.on_message(&mut senders, 0, message, 0);
@@ -77,7 +78,7 @@ pub fn test_on_message<T: ServerLogic>(server: &mut T, message: Message, respons
     assert_eq_message(node0_recv.recv(), response);
 }
 
-pub fn test_on_message_fn<T: ServerLogic>(
+pub fn test_on_message_fn<T: ServerProtocol>(
     server: &mut T,
     message: Message,
     check: Box<dyn FnOnce(Message) -> ()>,

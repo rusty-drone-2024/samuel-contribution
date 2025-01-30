@@ -7,7 +7,7 @@ use common_structs::{
 use crossbeam_channel::{Receiver, Sender};
 use wg_2024::{network::NodeId, packet::Packet};
 
-use crate::server::{Server, ServerLogic, ServerSenders};
+use crate::server::{Server, ServerProtocol, ServerSenders};
 
 pub struct TextServer {
     file_map: HashMap<Link, FileWithData>,
@@ -19,7 +19,7 @@ impl TextServer {
     }
 }
 
-impl ServerLogic for TextServer {
+impl ServerProtocol for TextServer {
     fn on_message(
         &mut self,
         senders: &mut ServerSenders,
@@ -37,6 +37,7 @@ impl ServerLogic for TextServer {
                 );
             }
             Message::ReqFilesList => {
+                // List files present in this server
                 Server::<TextServer>::send_message(
                     senders,
                     from,
@@ -46,12 +47,14 @@ impl ServerLogic for TextServer {
             }
             Message::ReqFile(id) => {
                 match self.file_map.get(&id) {
+                    // File is present in this server
                     Some(file) => Server::<TextServer>::send_message(
                         senders,
                         from,
                         Message::RespFile(file.clone()),
                         Some(session_id),
                     ),
+                    // File with that id is not known
                     None => Server::<TextServer>::send_message(
                         senders,
                         from,
@@ -61,6 +64,7 @@ impl ServerLogic for TextServer {
                 };
             }
             _ => {
+                // Default response
                 Server::<TextServer>::send_message(
                     senders,
                     from,
@@ -83,6 +87,7 @@ impl Leaf for Server<TextServer> {
     where
         Self: Sized,
     {
+        // Files available in the network
         let mut file_map = HashMap::new();
         file_map.insert(
             String::from("helloworld"),

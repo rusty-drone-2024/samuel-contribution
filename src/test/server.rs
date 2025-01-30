@@ -1,7 +1,10 @@
+#![cfg(test)]
+// Testing of the protocol-independent server implementation
+
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::server::{Server, ServerLogic};
+use crate::server::{Server, ServerProtocol};
 use crate::test::panic_to_message_multi;
 use common_structs::leaf::{LeafCommand, LeafEvent};
 use common_structs::message::Message;
@@ -17,7 +20,8 @@ impl EchoServer {
     }
 }
 
-impl ServerLogic for EchoServer {
+/// Send back any messages that we receive
+impl ServerProtocol for EchoServer {
     fn on_message(
         &mut self,
         senders: &mut crate::server::ServerSenders,
@@ -60,7 +64,7 @@ Nullam porta scelerisque tortor at feugiat. Donec at elit sit amet sem ullamcorp
 Integer et consequat est. Ut aliquam urna ut scelerisque dignissim. Sed porta varius viverra. Mauris fermentum dictum metus, eget efficitur est euismod eu. Maecenas ut vestibulum eros. Etiam non sagittis dui. Cras tempus odio vitae est dapibus fermentum sed vitae tellus. Aenean lacus libero, elementum at consequat sit amet, mattis non ante. Mauris quis pellentesque ligula. Integer tempus fermentum vestibulum.
 
 Etiam varius tortor vitae tincidunt rutrum. In tortor mauris, imperdiet malesuada cursus gravida, vehicula ut eros. Aliquam consequat mattis tincidunt. Integer dapibus lobortis ante, vitae suscipit mi rhoncus sit amet. Nunc eleifend venenatis euismod. Integer blandit tempus dapibus. Praesent vitae libero id lacus porttitor aliquet. Nam hendrerit sollicitudin libero, eget ultrices quam suscipit quis. Duis lacinia, sapien ut aliquam malesuada, turpis sapien lobortis ipsum, ut malesuada ligula arcu bibendum neque. Nullam sed libero eget diam eleifend sollicitudin non et mi. Curabitur vel ante non lacus placerat elementum id eget orci. Maecenas a dapibus nibh. Nam sed nulla quis lorem tincidunt sodales. Proin sit amet est augue. Sed leo ex, laoreet quis nulla eget, lacinia feugiat ex.").into_bytes(),
-    }; // fuzz testing
+    }; // Message can be fuzz tested for full coverage
 
     let fragments = message.clone().into_fragments();
     let fragment_count = fragments.len();

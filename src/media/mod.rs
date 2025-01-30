@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{collections::HashMap, fs::read, path::Path};
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},
@@ -7,7 +7,7 @@ use common_structs::{
 use crossbeam_channel::{Receiver, Sender};
 use wg_2024::{network::NodeId, packet::Packet};
 
-use crate::server::{Server, ServerLogic, ServerSenders};
+use crate::server::{Server, ServerProtocol, ServerSenders};
 
 pub struct MediaServer {
     media_map: HashMap<Link, Media>,
@@ -19,7 +19,7 @@ impl MediaServer {
     }
 }
 
-impl ServerLogic for MediaServer {
+impl ServerProtocol for MediaServer {
     fn on_message(
         &mut self,
         senders: &mut ServerSenders,
@@ -38,12 +38,14 @@ impl ServerLogic for MediaServer {
             }
             Message::ReqMedia(id) => {
                 match self.media_map.get(&id) {
+                    // Media is present in this server
                     Some(media) => Server::<MediaServer>::send_message(
                         senders,
                         from,
                         Message::RespMedia(media.clone()),
                         Some(session_id),
                     ),
+                    // Media with that id is not known
                     None => Server::<MediaServer>::send_message(
                         senders,
                         from,
@@ -53,6 +55,7 @@ impl ServerLogic for MediaServer {
                 };
             }
             _ => {
+                // Default response
                 Server::<MediaServer>::send_message(
                     senders,
                     from,
@@ -75,10 +78,11 @@ impl Leaf for Server<MediaServer> {
     where
         Self: Sized,
     {
+        // Media available in the network
         let mut media_map = HashMap::new();
         media_map.insert(
             String::from("chicken.jpeg"),
-            get_file_as_byte_vec(&String::from("chicken.jpeg")),
+            read(Path::new("chicken.jpeg")).expect("Unable to load chicken.jpeg"),
         );
         Server::create(
             id,
@@ -93,13 +97,4 @@ impl Leaf for Server<MediaServer> {
     fn run(&mut self) {
         self.run();
     }
-}
-
-fn get_file_as_byte_vec(filename: &String) -> Vec<u8> {
-    let mut f = File::open(&filename).expect("no file found");
-    let mut buffer = Vec::new();
-    f.read_to_end(&mut buffer)
-        .expect("file does not fit in buffer");
-
-    buffer
 }

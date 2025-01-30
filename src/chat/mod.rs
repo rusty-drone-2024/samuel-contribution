@@ -7,7 +7,7 @@ use common_structs::{
 use crossbeam_channel::{Receiver, Sender};
 use wg_2024::{network::NodeId, packet::Packet};
 
-use crate::server::{Server, ServerLogic, ServerSenders};
+use crate::server::{Server, ServerProtocol, ServerSenders};
 
 pub struct ChatServer {
     connected_clients: HashSet<NodeId>,
@@ -19,7 +19,7 @@ impl ChatServer {
     }
 }
 
-impl ServerLogic for ChatServer {
+impl ServerProtocol for ChatServer {
     fn on_message(
         &mut self,
         senders: &mut ServerSenders,
@@ -37,9 +37,11 @@ impl ServerLogic for ChatServer {
                 );
             }
             Message::ReqChatRegistration => {
+                // Add sender to known clients
                 self.connected_clients.insert(from);
             }
             Message::ReqChatClients => {
+                // List known clients
                 Server::<ChatServer>::send_message(
                     senders,
                     from,
@@ -49,6 +51,7 @@ impl ServerLogic for ChatServer {
             }
             Message::ReqChatSend { to, chat_msg } => {
                 if !self.connected_clients.contains(&to) {
+                    // Receiver client has not registered themselves
                     Server::<ChatServer>::send_message(
                         senders,
                         from,
@@ -58,6 +61,7 @@ impl ServerLogic for ChatServer {
                     return;
                 }
 
+                // Forward message to known client
                 Server::<ChatServer>::send_message(
                     senders,
                     to,
@@ -66,6 +70,7 @@ impl ServerLogic for ChatServer {
                 );
             }
             _ => {
+                // Default response
                 Server::<ChatServer>::send_message(
                     senders,
                     from,

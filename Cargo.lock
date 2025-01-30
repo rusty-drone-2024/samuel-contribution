@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "common_structs"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#17a187e4b4abbe8e716dc6dc00f981090d2e81f2"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#606007c993b3e73fa75e57b1905d57d4ef75ae36"
 dependencies = [
  "leaf",
  "message",
@@ -42,7 +42,7 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 [[package]]
 name = "leaf"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#17a187e4b4abbe8e716dc6dc00f981090d2e81f2"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#606007c993b3e73fa75e57b1905d57d4ef75ae36"
 dependencies = [
  "crossbeam-channel",
  "wg_2024",
@@ -63,7 +63,7 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 [[package]]
 name = "message"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#17a187e4b4abbe8e716dc6dc00f981090d2e81f2"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#606007c993b3e73fa75e57b1905d57d4ef75ae36"
 dependencies = [
  "serde",
  "serde_json",
@@ -127,9 +127,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.137"
+version = "1.0.138"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "930cfb6e6abf99298aaad7d29abbef7a9999a9a8806a40088f55f0dcec03146b"
+checksum = "d434192e7da787e94a6ea7e9670b26a036d0ca41e0b7efb2676dd32bae872949"
 dependencies = [
  "itoa",
  "memchr",
@@ -151,7 +151,10 @@ dependencies = [
 [[package]]
 name = "types"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#17a187e4b4abbe8e716dc6dc00f981090d2e81f2"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#606007c993b3e73fa75e57b1905d57d4ef75ae36"
+dependencies = [
+ "wg_2024",
+]
 
 [[package]]
 name = "unicode-ident"
