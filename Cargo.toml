@@ -9,6 +9,3 @@ common_structs = { git = "https://github.com/rusty-drone-2024/common-structs.git
 crossbeam-channel = ">=0.5.13"
 either = "1.13.0"
 log = "0.4.25"
-
-[dev-dependencies]
-# rusty_tester = { git = "https://github.com/rusty-drone-2024/rusty-tester.git", branch = "main" }
