@@ -9,7 +9,7 @@ use crate::test::panic_to_message_multi;
 use common_structs::leaf::{LeafCommand, LeafEvent};
 use common_structs::message::Message;
 use common_structs::types::Routing;
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, Sender};
 use wg_2024::network::{NodeId, SourceRoutingHeader};
 use wg_2024::packet::{Ack, FloodRequest, Nack, NackType, NodeType, Packet, PacketType};
 

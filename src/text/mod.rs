@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    hash::{DefaultHasher, Hash, Hasher},
+};
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},
@@ -10,12 +13,16 @@ use wg_2024::{network::NodeId, packet::Packet};
 use crate::server::{Server, ServerProtocol, ServerSenders};
 
 pub struct TextServer {
+    uuid: u64,
     file_map: HashMap<Link, FileWithData>,
 }
 
 impl TextServer {
     pub fn new(file_map: HashMap<Link, FileWithData>) -> Self {
-        Self { file_map }
+        let mut s = DefaultHasher::new();
+        "SamuelTextServer".hash(&mut s);
+        let uuid = s.finish();
+        Self { uuid, file_map }
     }
 }
 
@@ -32,7 +39,7 @@ impl ServerProtocol for TextServer {
                 Server::<TextServer>::send_message(
                     senders,
                     from,
-                    Message::RespServerType(ServerType::Text),
+                    Message::RespServerType(ServerType::Text(self.uuid)),
                     Some(session_id),
                 );
             }
@@ -96,6 +103,22 @@ impl Leaf for Server<TextServer> {
                 related_data: HashMap::new(),
             },
         );
+
+        {
+            let mut s = DefaultHasher::new();
+            "SamuelMediaServer".hash(&mut s);
+            let media_uuid = s.finish();
+            let mut related_data = HashMap::new();
+            related_data.insert(String::from("chicken.jpeg"), media_uuid);
+            file_map.insert(
+                String::from("plophub"),
+                FileWithData {
+                    file: String::from("# Plopmenz\n![Profile Picture](chicken.jpeg)"),
+                    related_data,
+                },
+            );
+        }
+
         Server::create(
             id,
             controller_send,

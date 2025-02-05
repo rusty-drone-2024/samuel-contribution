@@ -12,10 +12,15 @@ use super::{test_on_message, test_on_message_fn};
 #[test]
 fn server_type() {
     let mut server = TextServer::new(HashMap::new());
-    test_on_message(
+    test_on_message_fn(
         &mut server,
         Message::ReqServerType,
-        Message::RespServerType(ServerType::Text),
+        Box::new(|message| match message {
+            Message::RespServerType(ServerType::Text(_)) => {}
+            m => {
+                panic!("Response is not resp server type text. {}", m);
+            }
+        }),
     );
 }
 
@@ -44,7 +49,7 @@ fn file_list() {
                 resp_ids.sort();
                 assert_eq!(resp_ids, ids)
             }
-            _ => panic!("Message was not of type RespFilesList"),
+            m => panic!("Message was not of type RespFilesList. {}", m),
         }),
     );
 }

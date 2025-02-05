@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fs::read, path::Path};
+use std::{
+    collections::HashMap,
+    fs::read,
+    hash::{DefaultHasher, Hash, Hasher},
+    path::Path,
+};
 
 use common_structs::{
     leaf::{Leaf, LeafCommand, LeafEvent},
@@ -10,12 +15,16 @@ use wg_2024::{network::NodeId, packet::Packet};
 use crate::server::{Server, ServerProtocol, ServerSenders};
 
 pub struct MediaServer {
+    uuid: u64,
     media_map: HashMap<Link, Media>,
 }
 
 impl MediaServer {
     pub fn new(media_map: HashMap<Link, Media>) -> Self {
-        Self { media_map }
+        let mut s = DefaultHasher::new();
+        "SamuelMediaServer".hash(&mut s);
+        let uuid = s.finish();
+        Self { uuid, media_map }
     }
 }
 
@@ -32,7 +41,7 @@ impl ServerProtocol for MediaServer {
                 Server::<MediaServer>::send_message(
                     senders,
                     from,
-                    Message::RespServerType(ServerType::Media),
+                    Message::RespServerType(ServerType::Media(self.uuid)),
                     Some(session_id),
                 );
             }

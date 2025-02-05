@@ -7,15 +7,20 @@ use common_structs::message::{Message, ServerType};
 
 use crate::media::MediaServer;
 
-use super::test_on_message;
+use super::{test_on_message, test_on_message_fn};
 
 #[test]
 fn server_type() {
     let mut server = MediaServer::new(HashMap::new());
-    test_on_message(
+    test_on_message_fn(
         &mut server,
         Message::ReqServerType,
-        Message::RespServerType(ServerType::Media),
+        Box::new(|message| match message {
+            Message::RespServerType(ServerType::Media(_)) => {}
+            m => {
+                panic!("Response is not resp server type media. {}", m);
+            }
+        }),
     );
 }
 
