@@ -34,7 +34,8 @@ impl ServerProtocol for EchoServer {
     }
 }
 
-fn setup() -> (Server<EchoServer>, Sender<Packet>, Receiver<Packet>) {
+#[test]
+fn fragments() {
     let (controller_send, _test_controller_recv) = unbounded::<LeafEvent>();
     let (_test_controller_send, controller_recv) = unbounded::<LeafCommand>();
     let (test_packet_send, packet_recv) = unbounded::<Packet>();
@@ -43,7 +44,7 @@ fn setup() -> (Server<EchoServer>, Sender<Packet>, Receiver<Packet>) {
     let (node0_send, node0_recv) = unbounded::<Packet>();
     packet_send.insert(0, node0_send);
 
-    let server = Server::create(
+    let mut server = Server::create(
         0,
         controller_send,
         controller_recv,
@@ -51,13 +52,6 @@ fn setup() -> (Server<EchoServer>, Sender<Packet>, Receiver<Packet>) {
         packet_send,
         EchoServer::new(),
     );
-
-    (server, test_packet_send, node0_recv)
-}
-
-#[test]
-fn fragments() {
-    let (mut server, test_packet_send, node0_recv) = setup();
 
     let message = Message::ReqChatSend {
         to: 0,
@@ -113,7 +107,22 @@ Etiam varius tortor vitae tincidunt rutrum. In tortor mauris, imperdiet malesuad
 
 #[test]
 fn flood_request() {
-    let (mut server, test_packet_send, node0_recv) = setup();
+    let (controller_send, _test_controller_recv) = unbounded::<LeafEvent>();
+    let (_test_controller_send, controller_recv) = unbounded::<LeafCommand>();
+    let (test_packet_send, packet_recv) = unbounded::<Packet>();
+    let mut packet_send = HashMap::<NodeId, Sender<Packet>>::new();
+
+    let (node0_send, node0_recv) = unbounded::<Packet>();
+    packet_send.insert(0, node0_send);
+
+    let mut server = Server::create(
+        0,
+        controller_send,
+        controller_recv,
+        packet_recv,
+        packet_send,
+        EchoServer::new(),
+    );
 
     let flood_id = 123;
     let path_trace = vec![(0, NodeType::Client)];
@@ -149,7 +158,22 @@ fn flood_request() {
 
 #[test]
 fn nack() {
-    let (mut server, test_packet_send, node0_recv) = setup();
+    let (controller_send, _test_controller_recv) = unbounded::<LeafEvent>();
+    let (_test_controller_send, controller_recv) = unbounded::<LeafCommand>();
+    let (test_packet_send, packet_recv) = unbounded::<Packet>();
+    let mut packet_send = HashMap::<NodeId, Sender<Packet>>::new();
+
+    let (node0_send, node0_recv) = unbounded::<Packet>();
+    packet_send.insert(0, node0_send);
+
+    let mut server = Server::create(
+        0,
+        controller_send,
+        controller_recv,
+        packet_recv,
+        packet_send,
+        EchoServer::new(),
+    );
 
     let message = Message::ReqChatSend {
         to: 0,
@@ -171,7 +195,7 @@ Etiam varius tortor vitae tincidunt rutrum. In tortor mauris, imperdiet malesuad
     for fragment in fragments.clone() {
         let res = test_packet_send.send(Packet::new_fragment(
             SourceRoutingHeader::with_first_hop(vec![0, 0]),
-            0,
+            session_id,
             fragment,
         ));
 
