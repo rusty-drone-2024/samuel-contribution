@@ -74,7 +74,6 @@ impl ServerProtocol for MediaServer {
     }
 }
 
-static CHICKEN: &'static [u8] = include_bytes!("chicken.jpeg");
 impl Leaf for Server<MediaServer> {
     fn new(
         id: NodeId,
@@ -88,7 +87,10 @@ impl Leaf for Server<MediaServer> {
     {
         // Media available in the network
         let mut media_map = HashMap::new();
-        media_map.insert(String::from("chicken.jpeg"), Vec::from(CHICKEN));
+        media_map.insert(
+            String::from("chicken.jpeg"),
+            Vec::from(include_bytes!("chicken.jpeg")),
+        );
         Server::create(
             id,
             controller_send,
