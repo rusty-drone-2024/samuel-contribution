@@ -449,6 +449,11 @@ impl<T: ServerProtocol> Server<T> {
             );
         }
 
+        // Inform the controller we are sending a packet
+        if let Err(e) = controller.send(LeafEvent::PacketSend(packet.clone())) {
+            warn!("WARNING: Could not inform controller of packet send: {}", e)
+        }
+
         // Try sending the packet to the closest neighbor
         let send_error = to.send(packet.clone()).err();
 
