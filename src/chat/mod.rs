@@ -41,6 +41,18 @@ impl ServerProtocol for ChatServer {
             Message::ReqChatRegistration => {
                 // Add sender to known clients
                 self.connected_clients.insert(from);
+
+                for client in self.connected_clients.iter() {
+                    Server::<ChatServer>::send_message(
+                        server,
+                        senders,
+                        *client,
+                        Message::RespClientList(
+                            self.connected_clients.clone().into_iter().collect(),
+                        ),
+                        None,
+                    );
+                }
             }
             Message::ReqChatClients => {
                 // List known clients
