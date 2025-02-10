@@ -33,7 +33,7 @@ impl ServerProtocol for TextServer {
         from: NodeId,
         message: Message,
         session_id: u64,
-    ) -> () {
+    ) {
         match message {
             Message::ReqServerType => {
                 Server::<TextServer>::send_message(

@@ -40,6 +40,18 @@ impl Display for UnknownNodeInfoError {
     }
 }
 
+/// All errors that can occur when fetching the required information to send packets to a node.
+pub type PrepareNodeSendError = Either<UnknownNodeIdError, UnknownNodeInfoError>;
+
+/// Information required to send a packet.
+pub struct PreparedNodeSend<'a> {
+    routing: &'a Routing,
+    session: Session,
+    neighbor: &'a Sender<Packet>,
+    controller: &'a Sender<LeafEvent>,
+    history: &'a mut PacketHistory,
+}
+
 /// Per node, the sender to send packets to this node
 pub type PacketSendLookup = HashMap<NodeId, Sender<Packet>>;
 /// Per node, the routing to use to send packets to it
@@ -115,7 +127,7 @@ pub trait ServerProtocol {
         from: NodeId,
         message: Message,
         session_id: Session,
-    ) -> ();
+    );
 }
 
 /// Per session id + node, the fragments received under this session id (so far)
@@ -369,16 +381,7 @@ impl<T: ServerProtocol> Server<T> {
         senders: &mut ServerSenders,
         to: NodeId,
         increment_session: bool,
-    ) -> Result<
-        (
-            &Routing,
-            u64,
-            &Sender<Packet>,
-            &Sender<LeafEvent>,
-            &mut PacketHistory,
-        ),
-        Either<UnknownNodeIdError, UnknownNodeInfoError>,
-    > {
+    ) -> Result<PreparedNodeSend, PrepareNodeSendError> {
         match senders.node_path.get_mut(&to) {
             Some(node_path) => {
                 // All node paths are stored with hop index 1 (ready to be send)
@@ -389,13 +392,13 @@ impl<T: ServerProtocol> Server<T> {
                                 senders.session_id += 1; // First session has id 1
                             }
 
-                            Ok((
-                                node_path,
-                                senders.session_id,
-                                channel,
-                                &senders.controller_send,
-                                &mut senders.history,
-                            ))
+                            Ok(PreparedNodeSend {
+                                routing: node_path,
+                                session: senders.session_id,
+                                neighbor: channel,
+                                controller: &senders.controller_send,
+                                history: &mut senders.history,
+                            })
                         }
                         None => Err(Left(UnknownNodeIdError { node_id: to })),
                     }
@@ -414,16 +417,15 @@ impl<T: ServerProtocol> Server<T> {
         to: NodeId,
         packet: PacketType,
         fixed_session: Option<u64>, // Session id to use (in case of a response to received packet)
-    ) -> Result<Option<SendError<Packet>>, Either<UnknownNodeIdError, UnknownNodeInfoError>> {
-        let (node_path, session_id, channel, controller, history) =
-            Self::prepare_node_send(senders, to, fixed_session.is_none())?;
+    ) -> Result<Option<SendError<Packet>>, PrepareNodeSendError> {
+        let prepared_node_send = Self::prepare_node_send(senders, to, fixed_session.is_none())?;
         Ok(Self::send_packet_raw(
-            channel,
-            controller,
-            history,
+            prepared_node_send.neighbor,
+            prepared_node_send.controller,
+            prepared_node_send.history,
             Packet {
-                routing_header: node_path.clone(),
-                session_id: fixed_session.unwrap_or(session_id),
+                routing_header: prepared_node_send.routing.clone(),
+                session_id: fixed_session.unwrap_or(prepared_node_send.session),
                 pack_type: packet,
             },
         ))
@@ -438,10 +440,7 @@ impl<T: ServerProtocol> Server<T> {
     ) -> Option<SendError<Packet>> {
         // Record any packet that can be required to resend
         // Only MsgFragments can be dropped
-        let record: bool = match packet.pack_type {
-            PacketType::MsgFragment(_) => true,
-            _ => false,
-        };
+        let record: bool = matches!(packet.pack_type, PacketType::MsgFragment(_));
         if record {
             history.insert(
                 (packet.session_id, packet.get_fragment_index()),
@@ -458,10 +457,10 @@ impl<T: ServerProtocol> Server<T> {
         let send_error = to.send(packet.clone()).err();
 
         // Are we allowed to use the Simulation Controller in case we cannot send it through our neighbor
-        let use_shortcut = match packet.pack_type {
-            PacketType::Ack(_) | PacketType::Nack(_) | PacketType::FloodResponse(_) => true,
-            _ => false,
-        };
+        let use_shortcut = matches!(
+            packet.pack_type,
+            PacketType::Ack(_) | PacketType::Nack(_) | PacketType::FloodResponse(_)
+        );
         if use_shortcut && send_error.is_some() {
             let shortcut_error = controller.send(LeafEvent::ControllerShortcut(packet)).err();
 
@@ -488,10 +487,8 @@ impl<T: ServerProtocol> Server<T> {
 
         match res {
             Ok(send_errors) => {
-                for error in send_errors {
-                    if let Some(e) = error {
-                        warn!("WARNING: Send message error: {}", e)
-                    }
+                for error in send_errors.into_iter().flatten() {
+                    warn!("WARNING: Send message error: {}", error)
                 }
             }
             Err(e) => warn!("WARNING: Send message error: {}", e),
@@ -508,19 +505,18 @@ impl<T: ServerProtocol> Server<T> {
         fixed_session: Option<u64>, // Session id to use (in case of a response to received packet)
     ) -> Result<Vec<Option<SendError<Packet>>>, Either<UnknownNodeIdError, UnknownNodeInfoError>>
     {
-        let (node_path, session_id, channel, controller, history) =
-            Self::prepare_node_send(senders, to, fixed_session.is_none())?;
+        let prepared_node_send = Self::prepare_node_send(senders, to, fixed_session.is_none())?;
         Ok(message
             .into_fragments()
             .into_iter()
             .map(|fragment| {
                 Self::send_packet_raw(
-                    channel,
-                    controller,
-                    history,
+                    prepared_node_send.neighbor,
+                    prepared_node_send.controller,
+                    prepared_node_send.history,
                     Packet::new_fragment(
-                        node_path.clone(),
-                        fixed_session.unwrap_or(session_id),
+                        prepared_node_send.routing.clone(),
+                        fixed_session.unwrap_or(prepared_node_send.session),
                         fragment,
                     ),
                 )

@@ -33,7 +33,7 @@ impl ServerProtocol for MediaServer {
         from: NodeId,
         message: Message,
         session_id: u64,
-    ) -> () {
+    ) {
         match message {
             Message::ReqServerType => {
                 Server::<MediaServer>::send_message(
