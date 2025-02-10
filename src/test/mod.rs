@@ -73,7 +73,7 @@ pub fn assert_eq_message<T: Display>(packet: Result<Packet, T>, expected_message
 pub fn test_on_message<T: ServerProtocol>(server: &mut T, message: Message, response: Message) {
     let (mut senders, node0_recv) = setup_node0();
 
-    server.on_message(&mut senders, 0, message, 0);
+    server.on_message(0, &mut senders, 0, message, 0);
 
     assert_eq_message(node0_recv.recv(), response);
 }
@@ -81,11 +81,11 @@ pub fn test_on_message<T: ServerProtocol>(server: &mut T, message: Message, resp
 pub fn test_on_message_fn<T: ServerProtocol>(
     server: &mut T,
     message: Message,
-    check: Box<dyn FnOnce(Message) -> ()>,
+    check: Box<dyn FnOnce(Message)>,
 ) {
     let (mut senders, node0_recv) = setup_node0();
 
-    server.on_message(&mut senders, 0, message, 0);
+    server.on_message(0, &mut senders, 0, message, 0);
 
     check(panic_to_message(node0_recv.recv()));
 }

@@ -123,6 +123,7 @@ impl ServerReceivers {
 pub trait ServerProtocol {
     fn on_message(
         &mut self,
+        server: NodeId,
         senders: &mut ServerSenders,
         from: NodeId,
         message: Message,
@@ -262,6 +263,7 @@ impl<T: ServerProtocol> Server<T> {
                                 Ok(message) => {
                                     info!("Fragments parsed to message: {:?}", message);
                                     self.protocol.on_message(
+                                        self.id,
                                         &mut self.senders,
                                         node_id,
                                         message,
@@ -478,12 +480,13 @@ impl<T: ServerProtocol> Server<T> {
 
     /// Send a message to a node and process all errors
     pub fn send_message(
+        from: NodeId,
         senders: &mut ServerSenders,
         to: NodeId,
         message: Message,
         fixed_session: Option<u64>, // Session id to use (in case of a response to received packet)
     ) {
-        let res = Self::send_message_raw(senders, to, message, fixed_session);
+        let res = Self::send_message_raw(from, senders, to, message, fixed_session);
 
         match res {
             Ok(send_errors) => {
@@ -499,6 +502,7 @@ impl<T: ServerProtocol> Server<T> {
     /// The message will be split in multiple fragments
     /// More optimized than using send_packet for each fragment
     fn send_message_raw(
+        from: NodeId,
         senders: &mut ServerSenders,
         to: NodeId,
         message: Message,
@@ -506,7 +510,23 @@ impl<T: ServerProtocol> Server<T> {
     ) -> Result<Vec<Option<SendError<Packet>>>, Either<UnknownNodeIdError, UnknownNodeInfoError>>
     {
         let prepared_node_send = Self::prepare_node_send(senders, to, fixed_session.is_none())?;
-        Ok(message
+        let session = fixed_session.unwrap_or(prepared_node_send.session);
+
+        // Inform controller we are sending a message
+        if let Err(e) = prepared_node_send
+            .controller
+            .send(LeafEvent::MessageStartSend {
+                start: from,
+                session,
+                dest: to,
+                message: message.clone(),
+            })
+        {
+            warn!("WARNING: Could not send message start to controller: {}", e);
+        }
+
+        // Send message split into fragment packets
+        let result = Ok(message
             .into_fragments()
             .into_iter()
             .map(|fragment| {
@@ -514,13 +534,22 @@ impl<T: ServerProtocol> Server<T> {
                     prepared_node_send.neighbor,
                     prepared_node_send.controller,
                     prepared_node_send.history,
-                    Packet::new_fragment(
-                        prepared_node_send.routing.clone(),
-                        fixed_session.unwrap_or(prepared_node_send.session),
-                        fragment,
-                    ),
+                    Packet::new_fragment(prepared_node_send.routing.clone(), session, fragment),
                 )
             })
-            .collect())
+            .collect());
+
+        // Inform controller finished sending a message
+        if let Err(e) = prepared_node_send
+            .controller
+            .send(LeafEvent::MessageFullySent(from, session))
+        {
+            warn!(
+                "WARNING: Could not send message fully sent to controller: {}",
+                e
+            );
+        }
+
+        result
     }
 }

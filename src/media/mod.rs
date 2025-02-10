@@ -29,6 +29,7 @@ impl MediaServer {
 impl ServerProtocol for MediaServer {
     fn on_message(
         &mut self,
+        server: NodeId,
         senders: &mut ServerSenders,
         from: NodeId,
         message: Message,
@@ -37,6 +38,7 @@ impl ServerProtocol for MediaServer {
         match message {
             Message::ReqServerType => {
                 Server::<MediaServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::RespServerType(ServerType::Media(self.uuid)),
@@ -47,6 +49,7 @@ impl ServerProtocol for MediaServer {
                 match self.media_map.get(&id) {
                     // Media is present in this server
                     Some(media) => Server::<MediaServer>::send_message(
+                        server,
                         senders,
                         from,
                         Message::RespMedia(media.clone()),
@@ -54,6 +57,7 @@ impl ServerProtocol for MediaServer {
                     ),
                     // Media with that id is not known
                     None => Server::<MediaServer>::send_message(
+                        server,
                         senders,
                         from,
                         Message::ErrNotFound,
@@ -64,6 +68,7 @@ impl ServerProtocol for MediaServer {
             _ => {
                 // Default response
                 Server::<MediaServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::ErrUnsupportedRequestType,

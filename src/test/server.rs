@@ -25,12 +25,13 @@ impl EchoServer {
 impl ServerProtocol for EchoServer {
     fn on_message(
         &mut self,
+        server: NodeId,
         senders: &mut crate::server::ServerSenders,
         from: NodeId,
         message: Message,
         session_id: u64,
-    ) -> () {
-        Server::<EchoServer>::send_message(senders, from, message, Some(session_id));
+    ) {
+        Server::<EchoServer>::send_message(server, senders, from, message, Some(session_id));
     }
 }
 

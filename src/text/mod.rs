@@ -29,6 +29,7 @@ impl TextServer {
 impl ServerProtocol for TextServer {
     fn on_message(
         &mut self,
+        server: NodeId,
         senders: &mut ServerSenders,
         from: NodeId,
         message: Message,
@@ -37,6 +38,7 @@ impl ServerProtocol for TextServer {
         match message {
             Message::ReqServerType => {
                 Server::<TextServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::RespServerType(ServerType::Text(self.uuid)),
@@ -46,6 +48,7 @@ impl ServerProtocol for TextServer {
             Message::ReqFilesList => {
                 // List files present in this server
                 Server::<TextServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::RespFilesList(self.file_map.keys().cloned().collect()),
@@ -56,6 +59,7 @@ impl ServerProtocol for TextServer {
                 match self.file_map.get(&id) {
                     // File is present in this server
                     Some(file) => Server::<TextServer>::send_message(
+                        server,
                         senders,
                         from,
                         Message::RespFile(file.clone()),
@@ -63,6 +67,7 @@ impl ServerProtocol for TextServer {
                     ),
                     // File with that id is not known
                     None => Server::<TextServer>::send_message(
+                        server,
                         senders,
                         from,
                         Message::ErrNotFound,
@@ -73,6 +78,7 @@ impl ServerProtocol for TextServer {
             _ => {
                 // Default response
                 Server::<TextServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::ErrUnsupportedRequestType,

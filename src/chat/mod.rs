@@ -22,6 +22,7 @@ impl ChatServer {
 impl ServerProtocol for ChatServer {
     fn on_message(
         &mut self,
+        server: NodeId,
         senders: &mut ServerSenders,
         from: NodeId,
         message: Message,
@@ -30,6 +31,7 @@ impl ServerProtocol for ChatServer {
         match message {
             Message::ReqServerType => {
                 Server::<ChatServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::RespServerType(ServerType::Chat),
@@ -43,6 +45,7 @@ impl ServerProtocol for ChatServer {
             Message::ReqChatClients => {
                 // List known clients
                 Server::<ChatServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::RespClientList(self.connected_clients.clone().into_iter().collect()),
@@ -53,6 +56,7 @@ impl ServerProtocol for ChatServer {
                 if !self.connected_clients.contains(&to) {
                     // Receiver client has not registered themselves
                     Server::<ChatServer>::send_message(
+                        server,
                         senders,
                         from,
                         Message::ErrNotExistentClient,
@@ -63,6 +67,7 @@ impl ServerProtocol for ChatServer {
 
                 // Forward message to known client
                 Server::<ChatServer>::send_message(
+                    server,
                     senders,
                     to,
                     Message::RespChatFrom { from, chat_msg },
@@ -72,6 +77,7 @@ impl ServerProtocol for ChatServer {
             _ => {
                 // Default response
                 Server::<ChatServer>::send_message(
+                    server,
                     senders,
                     from,
                     Message::ErrUnsupportedRequestType,

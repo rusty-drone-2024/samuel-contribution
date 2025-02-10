@@ -25,8 +25,8 @@ fn chat_registration() {
 
     let mut server = ChatServer::new(HashSet::new());
 
-    server.on_message(&mut senders, 0, Message::ReqChatRegistration, 0);
-    server.on_message(&mut senders, 0, Message::ReqChatClients, 1);
+    server.on_message(0, &mut senders, 0, Message::ReqChatRegistration, 0);
+    server.on_message(0, &mut senders, 0, Message::ReqChatClients, 1);
 
     assert_eq_message(node0_recv.recv(), Message::RespClientList(vec![0]));
 }

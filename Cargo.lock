@@ -5,7 +5,7 @@ version = 4
 [[package]]
 name = "common_structs"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#cd4feb6e9b263986775e4bd4a8e6e9157b80247d"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#7ddec2921cd5de8418637ff653d3a824ec95785c"
 dependencies = [
  "leaf",
  "message",
@@ -42,9 +42,11 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 [[package]]
 name = "leaf"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#cd4feb6e9b263986775e4bd4a8e6e9157b80247d"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#7ddec2921cd5de8418637ff653d3a824ec95785c"
 dependencies = [
  "crossbeam-channel",
+ "message",
+ "types",
  "wg_2024",
 ]
 
@@ -63,7 +65,7 @@ checksum = "78ca9ab1a0babb1e7d5695e3530886289c18cf2f87ec19a575a0abdce112e3a3"
 [[package]]
 name = "message"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#cd4feb6e9b263986775e4bd4a8e6e9157b80247d"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#7ddec2921cd5de8418637ff653d3a824ec95785c"
 dependencies = [
  "serde",
  "serde_json",
@@ -151,7 +153,7 @@ dependencies = [
 [[package]]
 name = "types"
 version = "0.1.0"
-source = "git+https://github.com/rusty-drone-2024/common-structs.git#cd4feb6e9b263986775e4bd4a8e6e9157b80247d"
+source = "git+https://github.com/rusty-drone-2024/common-structs.git#7ddec2921cd5de8418637ff653d3a824ec95785c"
 dependencies = [
  "wg_2024",
 ]
